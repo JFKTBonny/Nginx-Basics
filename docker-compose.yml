@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  app2:
+    image: santonix/app2:latest
+    ports:
+      - "8192:8192"
+    restart: always
+
+  app1:
+    image: santonix/app1:latest
+    ports:
+      - "8191:8191"
+    restart: always
+
+  nginx:
+    image: santonix/custom-nginx:latest
+     # Use the custom Dockerfile provided earlier
+    ports:
+      - "8081:8080"
+    volumes:
+      - /home/bonny/nginx-docker-reverse-proxy/nginx/nginx-reverse-proxy/server-LB.conf:/etc/nginx/conf.d/server-LB.conf:ro
+    entrypoint: 
+      - sh
+      - -c
+      - |
+        chmod +x /scripts/wait-for-it.sh && \
+        apt-get update && apt-get install -y netcat-openbsd && \
+        sleep 20  && \
+        /scripts/wait-for-it.sh app2 8192 --timeout=30 && \
+        /scripts/wait-for-it.sh dc 8191 --timeout=30 && \
+        nginx -g 'daemon off;'
+    depends_on:
+      app2:
+        condition: service_started
+      dc:
+        condition: service_started
+    restart: always
